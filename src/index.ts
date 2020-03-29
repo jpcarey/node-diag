@@ -1,6 +1,7 @@
-import { program } from "commander";
 import dotenv from "dotenv";
-import { taskRunner } from "./task-runner";
+import { program } from "commander";
+import { TarArchive } from "./tar-writer";
+import { TaskRunner, RestCalls } from "./task-runner";
 import restCalls from "./elastic-rest.json";
 
 dotenv.config();
@@ -27,7 +28,7 @@ program
   .description("execute the given remote cmd")
   .option("-e, --exec_mode <mode>", "Which exec mode to use")
   .action((cmd, options) => {
-    taskRunner(restCalls);
+    execDiag(restCalls);
     console.log('exec "%s" using %s mode', cmd, options.exec_mode);
   })
   .on("--help", () => {
@@ -39,3 +40,23 @@ program
   });
 
 program.parse(process.argv);
+
+function execDiag(restCalls: RestCalls) {
+  const { CLOUDURL, USERNAME, PASSWORD } = process.env;
+  console.log(CLOUDURL, USERNAME, PASSWORD);
+  if (!CLOUDURL || !USERNAME || !PASSWORD) {
+    throw new Error("missing CLOUDURL");
+  } else if (!USERNAME) {
+    throw new Error("missing USERNAME");
+  } else if (!PASSWORD) {
+    throw new Error("missing PASSWORD");
+  }
+  const baseUrl = new URL(CLOUDURL);
+  const username = USERNAME;
+  const password = PASSWORD;
+
+  const tar = new TarArchive();
+
+  const t = new TaskRunner(baseUrl, { username, password }, tar);
+  t.startTasks(restCalls);
+}
